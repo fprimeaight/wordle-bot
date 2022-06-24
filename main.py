@@ -4,8 +4,6 @@ from replit import db
 import random
 from server import keep_alive
 
-import time
-
 intents = discord.Intents.all()
 client = discord.Client(intents=intents)
 
@@ -88,32 +86,32 @@ emojiDict = {
              'RX':'<:wordle_black_x:981440134216028200>',
              'RY':'<:wordle_black_y:981440195540971550>',
              'RZ':'<:wordle_black_z:981440219322662933>',
-             'BA':'<:wordle_grey_a:981552737881845890>',
-             'BB':'<:wordle_grey_b:981552779443179620>',
-             'BC':'<:wordle_grey_c:981552803522682912>',
-             'BD':'<:wordle_grey_d:981552830999572490>',
-             'BE':'<:wordle_grey_e:981552853661392967>',
-             'BF':'<:wordle_grey_f:981552889854058546>',
-             'BG':'<:wordle_grey_g:981552939011301406>',
-             'BH':'<:wordle_grey_h:981552973924696094>',
-             'BI':'<:wordle_grey_i:981553037833289748>',
-             'BJ':'<:wordle_grey_j:981553077381382205>',
-             'BK':'<:wordle_grey_k:981553104602419292>',
-             'BL':'<:wordle_grey_l:981553122793111562>',
-             'BM':'<:wordle_grey_m:981553138706309130>',
-             'BN':'<:wordle_grey_n:981553204670115860>',
-             'BO':'<:wordle_grey_o:981553236127395870>',
-             'BP':'<:wordle_grey_p:981553259628077107>',
-             'BQ':'<:wordle_grey_q:981553300895834193>',
-             'BR':'<:wordle_grey_r:981553327198314566>',
-             'BS':'<:wordle_grey_s:981553348790583306>',
-             'BT':'<:wordle_grey_t:981553388196085850>',
-             'BU':'<:wordle_grey_u:981553445943255100>',
-             'BV':'<:wordle_grey_v:981553474439372870>',
-             'BW':'<:wordle_grey_w:981558847770611712>',
-             'BX':'<:wordle_grey_x:981558895287869470>',
-             'BY':'<:wordle_grey_y:981558964091224104>',
-             'BZ':'<:wordle_grey_z:981559000820764752>'
+             'BA':'<:wordle_grey_a:981830054596198421>',
+             'BB':'<:wordle_grey_b:981830129296740353>',
+             'BC':'<:wordle_grey_c:981830160502386718>',
+             'BD':'<:wordle_grey_d:981830213824565288>',
+             'BE':'<:wordle_grey_e:981830236222160906>',
+             'BF':'<:wordle_grey_f:981830259278241792>',
+             'BG':'<:wordle_grey_g:981830290165071912>',
+             'BH':'<:wordle_grey_h:981830320519262228>',
+             'BI':'<:wordle_grey_i:981830346398113822>',
+             'BJ':'<:wordle_grey_j:981830375825375272>',
+             'BK':'<:wordle_grey_k:981830437007671317>',
+             'BL':'<:wordle_grey_l:981830509627863071>',
+             'BM':'<:wordle_grey_m:981830526325362688>',
+             'BN':'<:wordle_grey_n:981830551646384149>',
+             'BO':'<:wordle_grey_o:981830593031581707>',
+             'BP':'<:wordle_grey_p:981830716990042162>',
+             'BQ':'<:wordle_grey_q:981830742071992392>',
+             'BR':'<:wordle_grey_r:981830768156348436>',
+             'BS':'<:wordle_grey_s:981830798728638464>',
+             'BT':'<:wordle_grey_t:981830829560979466>',
+             'BU':'<:wordle_grey_u:981830855792160828>',
+             'BV':'<:wordle_grey_v:981830882748948510>',
+             'BW':'<:wordle_grey_w:981830953892728832>',
+             'BX':'<:wordle_grey_x:981830993637953626>',
+             'BY':'<:wordle_grey_y:981831019684581386>',
+             'BZ':'<:wordle_grey_z:981831048369422386>'
             }
 
 class Wordle:
@@ -295,6 +293,7 @@ default_keyboard = [
 @client.event
 async def on_ready():
   print("Logged in as {0.user}".format(client))
+  await client.change_presence(activity=discord.Game(name="Type !whelp to view commands!"))
   #deleteAllKeys() #-> for debugging
 
 @client.event
@@ -303,7 +302,6 @@ async def on_message(message):
   if message.author == client.user:
     return
   
-  start_time = time.time()
   if message.content.startswith('!w'):
     user_id = message.author.id
     if checkUser(user_id) == False:
@@ -349,9 +347,8 @@ async def on_message(message):
           
 
         embedMsg = discord.Embed(title = "Playing Wordle...", description = f'Enter a 5 letter word! You have {5-attempts} attempts left!\nUse the word {(db[str(user_id)])[7]} for bonus EXP!\n\n{output}', color=0x48b400)
-        embedMsg.add_field(name = "Keyboard", value = f'{newKeyboardDisplay(curr_keyboard)}', inline = False)
+        embedMsg.add_field(name = "Keyboard", value = f'Letters Used:\n{newKeyboardDisplay(curr_keyboard)}', inline = False)
         await message.reply(embed=embedMsg)
-        #embedMsg.add_field(name = "Keyboard:", value = newKeyboardDisplay(curr_keyboard), inline = False)
 
         #incrementing attempt counter by 1
         (db[str(user_id)])[1] += 1
@@ -477,24 +474,6 @@ async def on_message(message):
       
       else:    
         break
-    
-    #   for key in serverList:
-    #     if db[key][6] == scores[0]:
-    #       username = str(await client.fetch_user(key))
-    #       if len(username) > 17:
-    #         username = username[0:8] + '...' + username[len(username)-5:len(username)+1]
-    #       leaderboard[i] = f'{i+1}. {username}\n'
-    #       winexp_list[i] = f' {int(db[key][6])} EXP | {db[key][4]} Wins \n'
-    #       #wins_list[i] = f'{db[key][4]} Wins\n'
-    #       if db[key][3] != 0:
-    #         avgGuesses_list[i] = f' {round((db[key][5]/db[key][3]),2)} \n'
-    #       else:
-    #         avgGuesses_list[i] = ''
-          
-    #       scores.pop(0)
-    #       serverList.remove(key)
-
-    #       break
       
     i = 1
     for data in leaderboard:
@@ -516,6 +495,7 @@ async def on_message(message):
     #check latency
     #latency = client.latency
     #await message.channel.send(f'debug={latency*1000}ms')
+      
     embedMsg = discord.Embed(title = f"{message.author}'s Wordle Stats 📈", description = f'Total Games: {totalGames}\nTotal Wins: {wins}\nWin Streak: {streak} `(+{round((-1/(streak+2)+0.5)*100,2)}% EXP Bonus)`\nAverage No. Of Guesses: {avgGuesses}\nEXP: {exp}\nLeaderboard Position: {leaderboardPos}', color=0x48b400)
     embedMsg.add_field(name = "Server Leaderboard 🏆", value = f'Top {leaderboardSize} people in the server ranked based on EXP!', inline = False)
     embedMsg.add_field(name = "User", value = f'{serverUserLeaderboardString}', inline = True)
@@ -524,15 +504,12 @@ async def on_message(message):
     
     embedMsg.set_thumbnail(url=pfp)
     await message.reply(embed=embedMsg)
-
-    end_time = time.time()
-    await message.channel.send(f'[DEBUG] Time taken to run: {round(end_time - start_time,2)} s')
     
 
   if message.content.startswith('!whelp'):
 
     #text to display for how to play wordle
-    howToPlayText = 'Guess the WORDLE in six tries.\n\nEach guess must be a valid five-letter word.\nAfter each guess, the color of the tiles will change to show how close your guess was to the word.\n🟩 means that the letter is in the word and is in the correct spot.\n🟨 means that the letter is in the word but is in the wrong spot.\n⬛ means that the letter is NOT in the word.'
+    howToPlayText = 'Guess the WORDLE in six tries.\n\nEach guess must be a valid five-letter word.\nAfter each guess, the color of the tiles will change to show how close your guess was to the word.\n\n<:wordle_green_w:981415135874797648> means that the letter (in this case, the letter W) is in the word and is in the correct spot.\n\n<:wordle_yellow_o:981429169198104646> means that the letter (in this case, the letter O) is in the word but is in the wrong spot.\n\n<:wordle_black_r:981439988312965190> means that the letter (in this case, the letter R) is NOT in the word.'
 
     embedMsg = discord.Embed(title = "Wordle Help ❓", description = 'Bot has the commands below...\n`!wplay [*insert your word*]` -> To play Wordle\n`!wstats` -> To review your stats\n`!whelp` -> To view all bot commands\n`!wquit` -> To quit out of your Wordle Game', color=0x48b400)
     embedMsg.add_field(name = "How to play Wordle: ", value = howToPlayText, inline = False)
@@ -557,7 +534,6 @@ async def on_message(message):
       await message.reply(f'Quitted out of wordle game! Word is {db[str(user_id)][0]}!\nYou lost 600 EXP!\nYour win streak is now 0!')
 
       (db[str(user_id)])[0] = answer()
-      #(db[str(user_id)])[9] = default_keyboard
-  
+      
 keep_alive()
 client.run(os.environ['TOKEN'])
