@@ -14,6 +14,8 @@ replit = "^3.2.4"
 Flask = "^2.1.2"
 Pillow-PIL = "^0.1dev"
 pyspellchecker = "^0.6.3"
+discord-ui = "^5.1.6"
+discord-components = "^2.1.2"
 
 [tool.poetry.dev-dependencies]
 
