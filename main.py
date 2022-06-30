@@ -3,356 +3,147 @@ import game
 import os
 import random
 import discord_components
+import database
 from discord.ext import commands
 from server import keep_alive
 import time
 
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix="!")
+bot = commands.Bot(command_prefix="!", intents=intents)
 discord_components.DiscordComponents(bot)
-#keep_alive()
 
 @bot.event
 async def on_ready():
   print("Logged in as {0.user}".format(bot))
   activity = discord.Game(name="!testcmd")
   await bot.change_presence(status = discord.Status.online, activity = activity)
+      
 
 @bot.command()
 async def testcmd(ctx):
   # create embed
   start_time = time.time()
-  embed = discord.Embed(title = "Menu", description='Choose an option below!',color=0x5865F2)
+  embed = discord.Embed(title = "📝 Menu", description='Choose an option below!',color=0x5865F2)
   embed.set_footer(text = f'Runtime: {(time.time()-start_time):.2e} seconds')
+  
+  button1 = discord_components.Button(label='Play', style = '1', emoji='▶️', custom_id='play')
+  button2 = discord_components.Button(label='Stats',style = '1', emoji = '📈', custom_id='stats')
+  button3 = discord_components.Button(label='Leaderboard', style = '1', emoji='🏆', custom_id='leaderboard')
+  button4 = discord_components.Button(label='Help', style = '1', emoji='❓', custom_id='help')
+  
+  menu = [button1,button2,button3,button4]
 
-  menu = [discord_components.Button(label='Play', style = '3', emoji='▶️', custom_id='play'),
-          discord_components.Button(label='Stats',style = '1', emoji = '📈', custom_id='stats'),
-          discord_components.Button(label='Leaderboard', style = '1', emoji='🏆', custom_id='leaderboard'),
-          discord_components.Button(label='Help', style = '1', emoji='❓', custom_id='help')]
-
-  # send menu to user
+  # shows menu to user
   message = await ctx.reply(embed=embed, components=[menu])
 
   # ensure that user who pressed the button is the user who called the original command
   interaction = await bot.wait_for('button_click')
+
   while interaction.author != ctx.author:
     interaction = await bot.wait_for('button_click')
 
-  # disable buttons (to update menu look) after a button is pressed
+  # disable buttons and update menu look after a button is pressed
   for button in menu:
+    if button.custom_id == interaction.custom_id:
+      button.style = 3
     button.disabled = True
+    
   await message.edit(embed=embed, components=[menu])
 
   if interaction.custom_id == 'play':
-    # run function1
-    await interaction.send('run function1', ephemeral = False)
+    # when 'Play button is pressed'
+
+    await ctx.reply('run function1')
+
   elif interaction.custom_id == 'stats':
-    # run function2
-    await interaction.send('run function2', ephemeral = False)
+    # when 'Stats' button is pressed
+    if str(ctx.author.id) not in database.get_users():
+      await interaction.send(f'<@{ctx.author.id}> Play a game first to view your stats!', ephemeral = False)
+    else:
+      await ctx.reply(embed=get_stats(ctx.author))
+  
   elif interaction.custom_id == 'leaderboard':
-    # run function3
-    await interaction.send('run function3', ephemeral = False)
+    # when 'Leaderboard' button is pressed
+    server = message.guild
+    leaderboard = get_server_leaderboard(ctx.author,server)
+    await ctx.reply(embed=leaderboard)
+  
   else:
-    # run function4
-    await interaction.send('run function4', ephemeral = False)
+    # when 'Help' button is pressed
+    await ctx.reply(embed=help())
+
+def get_stats(user):
+  # function to return an embed of the user's stats
+  start_time = time.time()
+  user_id = user.id
+  embed = discord.Embed(title = 'Statistics 📈', description=f'Reviewing statistics of {user}...',color = 0x5865F2)
+  embed.add_field(name = "Total Games Played", value ="{:,}".format(database.get_totalGames(user_id)), inline = False)
+  embed.add_field(name = "Total Wins", value = "{:,}".format(database.get_wins(user_id)), inline = False)
+  embed.add_field(name = "Total EXP", value = f'{"{:,}".format(database.get_exp(user_id))}', inline = False)
+  embed.add_field(name = "Streak", value = f'{"{:,}".format(database.get_streak(user_id))} `(+{round((-1/(database.get_streak(user_id)+2)+0.5)*100,2)}% EXP Bonus)`', inline = False)
+  embed.add_field(name = "Average Guesses", value = round(database.get_totalGuesses(user_id)/database.get_totalGames(user_id),2), inline = False)
+  embed.set_thumbnail(url=user.avatar_url)
+  embed.set_footer(text = f'Runtime: {(time.time()-start_time):.2e} seconds')
+  return embed
+
+
+def get_server_leaderboard(user,server):
+  # function to return an embed of server leaderboard
+  leaderboard_size = 5 
+  leaderboard = {}
+  all_users = database.get_users()
   
+  leaderboard_usernames = ''
+  leaderboard_exp = ''
+  leaderboard_wins = ''
+  
+  start_time = time.time()
+  user_id = user.id
+  
+  for member in server.members:
+    memberID = str(member.id)
+    if memberID in all_users:
+      leaderboard[database.get_exp(memberID)] = memberID
+
+  sorted_leaderboard = sorted(leaderboard.items(), key=lambda x: x[0], reverse=True)
+
+  index = 0
+  while index < leaderboard_size and index < len(sorted_leaderboard):
+    # getting user_id of top players
+    top_player_id = int(sorted_leaderboard[index][1])
+    # print(top_player_id)
+    
+    # getting usernames of top players
+    username = str(bot.get_user(top_player_id))
+    
+    if len(username) > 17:
+      username = f'{username[0:8]}...{username[len(username)-5:len(username)+1]}'
+    leaderboard_usernames += f'{index + 1}. {username}\n'
+
+    # getting EXP of top players
+    leaderboard_exp += f'{"{:,}".format(database.get_exp(top_player_id))}\n'
+
+    # getting wins of top players
+    leaderboard_wins += f'{"{:,}".format(database.get_wins(top_player_id))}\n'
+    
+    index += 1
+  
+  embed = discord.Embed(title = "🏆 Leaderboard", description='Top people in the server!',color=0x5865F2)
+  embed.add_field(name = "User", value = f'{leaderboard_usernames}', inline = True)
+  embed.add_field(name = "EXP", value = f'{leaderboard_exp}', inline = True)
+  embed.add_field(name = "Wins", value = f'{leaderboard_wins}', inline = True)
+  embed.set_footer(text = f'Runtime: {(time.time()-start_time):.2e} seconds')
+  return embed
+  
+# keep_alive()
+def help():
+  start_time = time.time()
+  embed = discord.Embed(title = "Help ❓", description='Placeholder Text',color=0x5865F2)
+  embed.set_footer(text = f'Runtime: {(time.time()-start_time):.2e} seconds')
+  return embed
+  
+keep_alive()
 bot.run(os.environ['TOKEN'])
-
-# emojiDict = {
-#              'GA':'<:wordle_green_a:981408163217682472>',
-#              'GB':'<:wordle_green_b:981408499558936616>',
-#              'GC':'<:wordle_green_c:981409544863354901>',
-#              'GD':'<:wordle_green_d:981409583597781012>',
-#              'GE':'<:wordle_green_e:981410275087507477>',
-#              'GF':'<:wordle_green_f:981414626732429312>',
-#              'GG':'<:wordle_green_g:981414670177017887>',
-#              'GH':'<:wordle_green_h:981414716704444416>',
-#              'GI':'<:wordle_green_i:981414758366470184>',
-#              'GJ':'<:wordle_green_j:981414790230605865>',
-#              'GK':'<:wordle_green_k:981414823080378398>',
-#              'GL':'<:wordle_green_l:981414843573743656>',
-#              'GM':'<:wordle_green_m:981414863723188304>',
-#              'GN':'<:wordle_green_n:981414891451719722>',
-#              'GO':'<:wordle_green_o:981414916026146878>',
-#              'GP':'<:wordle_green_p:981414945885405184>',
-#              'GQ':'<:wordle_green_q:981414966949199892>',
-#              'GR':'<:wordle_green_r:981415001921306635>',
-#              'GS':'<:wordle_green_s:981415043520430110>',
-#              'GT':'<:wordle_green_t:981415066584895521>',
-#              'GU':'<:wordle_green_u:981415083391479840>',
-#              'GV':'<:wordle_green_v:981415115133976587>',
-#              'GW':'<:wordle_green_w:981415135874797648>',
-#              'GX':'<:wordle_green_x:981415168028327946>',
-#              'GY':'<:wordle_green_y:981415186370002975>',
-#              'GZ':'<:wordle_green_z:981415202786541629>',
-#              'YA':'<:wordle_yellow_a:981428810736082964>',
-#              'YB':'<:wordle_yellow_b:981428841299992576>',
-#              'YC':'<:wordle_yellow_c:981428862544134184>',
-#              'YD':'<:wordle_yellow_d:981428886992748605>',
-#              'YE':'<:wordle_yellow_e:981428911785271316>',
-#              'YF':'<:wordle_yellow_f:981428934233194516>',
-#              'YG':'<:wordle_yellow_g:981428958396571678>',
-#              'YH':'<:wordle_yellow_h:981428986754252871>',
-#              'YI':'<:wordle_yellow_i:981429014147260416>',
-#              'YJ':'<:wordle_yellow_j:981429041389240330>',
-#              'YK':'<:wordle_yellow_k:981429064076255242>',
-#              'YL':'<:wordle_yellow_l:981429094220701726>',
-#              'YM':'<:wordle_yellow_m:981429118371508335>',
-#              'YN':'<:wordle_yellow_n:981429141758967839>',
-#              'YO':'<:wordle_yellow_o:981429169198104646>',
-#              'YP':'<:wordle_yellow_p:981429197731921951>',
-#              'YQ':'<:wordle_yellow_q:981429225582104596>',
-#              'YR':'<:wordle_yellow_r:981429257748242482>',
-#              'YS':'<:wordle_yellow_s:981429285690679386>',
-#              'YT':'<:wordle_yellow_t:981429318322372699>',
-#              'YU':'<:wordle_yellow_u:981429344129908776>',
-#              'YV':'<:wordle_yellow_v:981429370021363712>',
-#              'YW':'<:wordle_yellow_w:981429393664659497>',
-#              'YX':'<:wordle_yellow_x:981429421896499280>',
-#              'YY':'<:wordle_yellow_y:981431940769017856>',
-#              'YZ':'<:wordle_yellow_z:981431962185125928>',
-#              'RA':'<:wordle_black_a:981439626763968533>',
-#              'RB':'<:wordle_black_b:981439655490756698>',
-#              'RC':'<:wordle_black_c:981439673333350420>',
-#              'RD':'<:wordle_black_d:981439695290523678>',
-#              'RE':'<:wordle_black_e:981439714697576508>',
-#              'RF':'<:wordle_black_f:981439733844545537>',
-#              'RG':'<:wordle_black_g:981439752286920717>',
-#              'RH':'<:wordle_black_h:981439772675428362>',
-#              'RI':'<:wordle_black_i:981439801481895967>',
-#              'RJ':'<:wordle_black_j:981439820515668038>',
-#              'RK':'<:wordle_black_k:981439844553203722>',
-#              'RL':'<:wordle_black_l:981439865205960754>',
-#              'RM':'<:wordle_black_m:981439884713689120>',
-#              'RN':'<:wordle_black_n:981439908956766228>',
-#              'RO':'<:wordle_black_o:981439926262460446>',
-#              'RP':'<:wordle_black_p:981439942246957086>',
-#              'RQ':'<:wordle_black_q:981439966624251904>',
-#              'RR':'<:wordle_black_r:981439988312965190>',
-#              'RS':'<:wordle_black_s:981440009833967676>',
-#              'RT':'<:wordle_black_t:981440040272011264>',
-#              'RU':'<:wordle_black_u:981440063785275442>',
-#              'RV':'<:wordle_black_v:981440093690675220>',
-#              'RW':'<:wordle_black_w:981440116822245396>',
-#              'RX':'<:wordle_black_x:981440134216028200>',
-#              'RY':'<:wordle_black_y:981440195540971550>',
-#              'RZ':'<:wordle_black_z:981440219322662933>',
-#              'BA':'<:wordle_grey_a:981830054596198421>',
-#              'BB':'<:wordle_grey_b:981830129296740353>',
-#              'BC':'<:wordle_grey_c:981830160502386718>',
-#              'BD':'<:wordle_grey_d:981830213824565288>',
-#              'BE':'<:wordle_grey_e:981830236222160906>',
-#              'BF':'<:wordle_grey_f:981830259278241792>',
-#              'BG':'<:wordle_grey_g:981830290165071912>',
-#              'BH':'<:wordle_grey_h:981830320519262228>',
-#              'BI':'<:wordle_grey_i:981830346398113822>',
-#              'BJ':'<:wordle_grey_j:981830375825375272>',
-#              'BK':'<:wordle_grey_k:981830437007671317>',
-#              'BL':'<:wordle_grey_l:981830509627863071>',
-#              'BM':'<:wordle_grey_m:981830526325362688>',
-#              'BN':'<:wordle_grey_n:981830551646384149>',
-#              'BO':'<:wordle_grey_o:981830593031581707>',
-#              'BP':'<:wordle_grey_p:981830716990042162>',
-#              'BQ':'<:wordle_grey_q:981830742071992392>',
-#              'BR':'<:wordle_grey_r:981830768156348436>',
-#              'BS':'<:wordle_grey_s:981830798728638464>',
-#              'BT':'<:wordle_grey_t:981830829560979466>',
-#              'BU':'<:wordle_grey_u:981830855792160828>',
-#              'BV':'<:wordle_grey_v:981830882748948510>',
-#              'BW':'<:wordle_grey_w:981830953892728832>',
-#              'BX':'<:wordle_grey_x:981830993637953626>',
-#              'BY':'<:wordle_grey_y:981831019684581386>',
-#              'BZ':'<:wordle_grey_z:981831048369422386>'
-#             }
-
-# class Wordle:
-#     def __init__(self,answer):
-#         self.answer = answer
-#         self.dictionary = {}
-#         for letter in answer:
-#             if letter not in self.dictionary:
-#                 self.dictionary[letter] = 1
-#             else:
-#                 self.dictionary[letter] += 1
-    
-#     def checkWord(self,word):
-#         checkWordDictionary = self.dictionary
-#         output = ['']*5
-        
-#         #check for correct letters at correct position
-#         i = 0
-#         for letter in word:
-#             if letter == self.answer[i]:
-#                 output[i] = 'G' + str(letter)
-#                 checkWordDictionary[letter] -= 1
-#             i += 1
-        
-#         #check for correct letters at incorrect position
-#         i = 0
-#         for letter in word:
-#             if letter in self.answer and letter != self.answer[i] and checkWordDictionary[letter] > 0:
-#                 output[i] = 'Y' + str(letter)
-#                 checkWordDictionary[letter] -= 1
-#             i += 1
-        
-#         #fill in remaining wrong letters
-#         i = 0
-#         for letter in output:
-#             if letter == '':
-#                 output[i] = 'R' + str(word[i])
-#             i += 1
-
-#         #reset dictionary to initial values
-#         self.resetDict()
-        
-#         return output
-    
-#     def checkWin(self,word):
-#         if word == self.answer:
-#             return True
-   
-#     def getAns(self):
-#         return self.answer
-    
-#     def getDict(self):
-#         return self.dictionary
-    
-#     def resetDict(self):
-#         self.dictionary = {}
-#         for letter in self.answer:
-#             if letter not in self.dictionary:
-#                 self.dictionary[letter] = 1
-#             else:
-#                 self.dictionary[letter] += 1
-
-# # put this in DB file
-# def checkUser(user_id):
-#   if str(user_id) in db.keys():
-#     return True
-#   else:
-#     return False
-
-# # put in wordle class
-# def checkWordExists(word):
-#   checklist = []
-#   f = open('wordle-allowed-guesses.txt','r')
-#   for line in f:
-#     checklist.append(line.strip().upper())
-#   f.close()
-  
-#   if word in checklist:
-#     return True
-#   else:
-#     return False
-
-# # put in DB file
-# def deleteAllKeys(): # --> only for testing
-#   for key in db.keys():
-#     del db[key]
-
-# # put in wordle class
-# def answer():
-#   word_list = []
-  
-#   f = open('wordle-answers-alphabetical.txt','r')
-#   for line in f:
-#     word_list.append(line.strip())
-#   f.close()
-  
-#   chosenWord = random.choice(word_list).upper()
-
-#   return chosenWord
-
-# # put in wordle class
-# def emojiDisplay(array):
-#   result = ''
-#   for data in array:
-#     if data[0] == 'G':
-#       result += emojiDict.get(data)
-#     elif data[0] == 'Y':
-#       result += emojiDict.get(data)
-#     elif data[0] == 'R':
-#       result += emojiDict.get(data)
-#     elif data[0] == 'B':
-#       result += emojiDict.get(data)
-#   return result
-
-# # put in Keyboard Class in Wordle file
-# def newKeyboardState(curr_keyboard,array):
-#   for data in array:
-#     found = False
-#     if data[0] == 'G':
-#       for row in range(len(curr_keyboard)):
-#         for key in range(len(curr_keyboard[row])):
-#           if curr_keyboard[row][key][1] == data[1]:
-#             curr_keyboard[row][key] = 'G' + curr_keyboard[row][key][1]
-#             found = True
-#             break
-#         if found == True:
-#           break
-#     elif data[0] == 'R':
-#       for row in range(len(curr_keyboard)):
-#         for key in range(len(curr_keyboard[row])):
-#           if curr_keyboard[row][key][1] == data[1]:
-#             if curr_keyboard[row][key][0] == 'B':
-#               curr_keyboard[row][key] = 'R' + curr_keyboard[row][key][1]
-#               found = True
-#             break
-#         if found == True:
-#           break
-#     elif data[0] == 'Y':
-#       for row in range(len(curr_keyboard)):
-#         for key in range(len(curr_keyboard[row])):
-#           if curr_keyboard[row][key][1] == data[1]:
-#             if curr_keyboard[row][key][0] != 'G' and curr_keyboard[row][key][0] != 'Y':
-#               curr_keyboard[row][key] = 'Y' + curr_keyboard[row][key][1]
-#               found = True
-#             break
-#         if found == True:
-#           break
-  
-#   return curr_keyboard
-
-# # put in Keyboard class
-# def newKeyboardDisplay(curr_keyboard):
-#   display = ''
-#   i = 0
-#   for row in curr_keyboard:
-#     if i == 1:
-#       display += i*7*' ' + emojiDisplay(row) + '\n'
-#     elif i == 2:
-#       display += i*12*' ' + emojiDisplay(row) + '\n'
-#     else:
-#       display += emojiDisplay(row) + '\n'
-#     i += 1
-
-#   return display
-
-# # set to default in keyboard class
-# default_keyboard = [
-#                     ['BQ','BW','BE','BR','BT','BY','BU','BI','BO','BP'],
-#                     ['BA','BS','BD','BF','BG','BH','BJ','BK','BL'],
-#                     ['BZ','BX','BC','BV','BB','BN','BM']
-#                    ]
-
-# # def updateDB():
-# #   for key in db.keys():
-# #     value = db[key]
-# #     value[1] = 0
-# #     value[2] = ''
-# #     value[9] = default_keyboard
-# #     if key == '368244543998656512':
-# #       value[5] = 170
-# #       value[4] = 34
-# #       value[3] = 37
-
-# # updateDB()
-
-# @client.event
-# async def on_ready():
-#   print("Logged in as {0.user}".format(client))
-#   await client.change_presence(activity=discord.Game(name="Type !whelp to view commands!"))
-#   #deleteAllKeys() #-> for debugging
 
 # @client.event
 
