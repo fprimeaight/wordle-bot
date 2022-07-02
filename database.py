@@ -95,6 +95,3 @@ def set_isPlaying(user_id,value):
   
 def get_isPlaying(user_id):
   return db[str(user_id)][10]
-
-# for key in db.keys():
-#   print(db[key])
