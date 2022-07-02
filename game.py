@@ -1,27 +1,28 @@
 import random
 from emote_dictionary import emojiDict
 
+def answer():
+  word_list = []
+
+  f = open('wordle-answers-alphabetical.txt','r')
+  for line in f:
+    word_list.append(line.strip())
+  f.close()
+
+  chosenWord = random.choice(word_list).upper()
+
+  return chosenWord
+      
 class Wordle:
-    def __init__(self,answer):
-        self.answer = answer
-        self.dictionary = {}
+    def __init__(self,answer = None):
+      self.answer = answer
+      self.dictionary = {}
+      if self.answer != None:
         for letter in answer:
             if letter not in self.dictionary:
                 self.dictionary[letter] = 1
             else:
                 self.dictionary[letter] += 1
-    
-    def answer():
-      word_list = []
-    
-      f = open('wordle-answers-alphabetical.txt','r')
-      for line in f:
-        word_list.append(line.strip())
-      f.close()
-    
-      chosenWord = random.choice(word_list).upper()
-  
-      return chosenWord
     
     def checkWord(self,word):
         checkWordDictionary = self.dictionary
@@ -54,8 +55,16 @@ class Wordle:
         self.resetDict()
         
         return output
-
-    def emojiDisplay(array):
+      
+    def resetDict(self):
+      self.dictionary = {}
+      for letter in self.answer:
+        if letter not in self.dictionary:
+          self.dictionary[letter] = 1
+        else:
+          self.dictionary[letter] += 1
+              
+    def emojiDisplay(self,array):
       result = ''
       for data in array:
         if data[0] == 'G':
@@ -68,6 +77,17 @@ class Wordle:
           result += emojiDict.get(data)
       return result
 
+    def checkWordExists(self,word):
+      word_exists = False
+      
+      f = open('wordle-allowed-guesses.txt','r')
+      for line in f:
+        if word == line.strip().upper():
+          word_exists = True
+          break
+
+      return word_exists
+        
 class Keyboard:
     def __init__(self):
       self.default_keyboard =  [
@@ -112,15 +132,30 @@ class Keyboard:
       return curr_keyboard
 
     def newKeyboardDisplay(curr_keyboard):
+      
+      def emojiDisplay(array):
+        result = ''
+        for data in array:
+          if data[0] == 'G':
+            result += emojiDict.get(data)
+          elif data[0] == 'Y':
+            result += emojiDict.get(data)
+          elif data[0] == 'R':
+            result += emojiDict.get(data)
+          elif data[0] == 'B':
+            result += emojiDict.get(data)
+        return result
+      
       display = ''
+      
       i = 0
       for row in curr_keyboard:
         if i == 1:
-          display += i*7*' ' + Wordle.emojiDisplay(row) + '\n'
+          display += i*7*' ' + emojiDisplay(row) + '\n'
         elif i == 2:
-          display += i*12*' ' + Wordle.emojiDisplay(row) + '\n'
+          display += i*12*' ' + emojiDisplay(row) + '\n'
         else:
-          display += Wordle.emojiDisplay(row) + '\n'
+          display += emojiDisplay(row) + '\n'
         i += 1
     
       return display
