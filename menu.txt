@@ -1,0 +1,12 @@
+Rules:
+You have 6 tries to guess a 5 letter word.
+Every guess will reveal particular information of a word:
+
+A letter that is not in the word will turn black.
+E.g. <:wordle_black_a:981439626763968533><:wordle_black_p:981439942246957086><:wordle_black_p:981439942246957086><:wordle_black_l:981439865205960754><:wordle_black_e:981439714697576508>
+
+A letter that is in the word but in the incorrect position will turn yellow.
+E.g. <:wordle_yellow_a:981428810736082964><:wordle_black_p:981439942246957086><:wordle_black_p:981439942246957086><:wordle_black_l:981439865205960754><:wordle_black_e:981439714697576508>
+
+A letter that is in the word and is in the correct position will turn green.
+E.g. <:wordle_green_a:981408163217682472><:wordle_black_p:981439942246957086><:wordle_black_p:981439942246957086><:wordle_black_l:981439865205960754><:wordle_black_e:981439714697576508>

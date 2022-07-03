@@ -17,12 +17,68 @@ async def on_ready():
   activity = discord.Game(name="!testcmd")
   await bot.change_presence(status = discord.Status.online, activity = activity)
       
+@bot.command()
+async def testcmd(ctx):
+  # create embed
+  start_time = time.time()
+  if database.checkUser(ctx.author.id) == True:
+    database.set_isPlaying(ctx.author.id,False)
+  
+  embed = discord.Embed(title = "📝 Menu", description='Choose an option below!',color=0x5865F2)
+  embed.set_footer(text = f'Runtime: {(time.time()-start_time):.2e} seconds')
+  
+  button1 = discord_components.Button(label='Play', style = '1', emoji='▶️', custom_id='play')
+  button2 = discord_components.Button(label='Stats',style = '1', emoji = '📈', custom_id='stats')
+  button3 = discord_components.Button(label='Leaderboard', style = '1', emoji='🏆', custom_id='leaderboard')
+  button4 = discord_components.Button(label='Help', style = '1', emoji='❓', custom_id='help')
+  
+  menu = [button1,button2,button3,button4]
+
+  # shows menu to user
+  message = await ctx.reply(embed=embed, components=[menu])
+
+  # ensure that user who pressed the button is the user who called the original command
+  interaction = await bot.wait_for('button_click')
+
+  while interaction.author != ctx.author:
+    interaction = await bot.wait_for('button_click')
+
+  # disable buttons and update menu look after a button is pressed
+  for button in menu:
+    if button.custom_id == interaction.custom_id:
+      button.style = 3
+    button.disabled = True
+    
+  await message.edit(embed=embed, components=[menu])
+
+  if interaction.custom_id == 'play':
+    # when 'Play button is pressed'
+    await ctx.reply(embed=play_wordle(ctx.author))
+
+  elif interaction.custom_id == 'stats':
+    # when 'Stats' button is pressed
+    if str(ctx.author.id) not in database.get_users():
+      await interaction.send(f'<@{ctx.author.id}> Play a game first to view your stats!', ephemeral = False)
+    else:
+      await ctx.reply(embed=get_stats(ctx.author))
+  
+  elif interaction.custom_id == 'leaderboard':
+    # when 'Leaderboard' button is pressed
+    server = message.guild
+    await ctx.reply(embed=get_server_leaderboard(ctx.author,server))
+  
+  else:
+    # when 'Help' button is pressed
+    await ctx.reply(embed=help())
+
 @bot.event
 async def on_message(message):
+  # handles main wordle game logic
   header_text = 'Playing Wordle...'
   secondary_text = ''
   embed_colour = 0x5865F2
-  
+
+  # ensure user is a valid one and is indeed playing the game
   if message.author.id != bot.user.id and database.checkUser(message.author.id) == True:
     if len(message.content.split()) == 1 and database.get_isPlaying(str(message.author.id)) == True and message.content != '!testcmd':
       user_id = message.author.id
@@ -97,7 +153,6 @@ async def on_message(message):
           database.set_attempts(user_id,0)
           database.reset_output(user_id)
           database.set_isPlaying(user_id,False)
-          # button1 = discord_components.Button(label='Play', style = '1', emoji='▶️', custom_id='play')
 
         else:
           embed = discord.Embed(title = header_text, description = secondary_text, color=embed_colour)
@@ -110,61 +165,7 @@ async def on_message(message):
         await message.reply('Word you entered is not a valid word!')
 
     await bot.process_commands(message)
-      
-@bot.command()
-async def testcmd(ctx):
-  # create embed
-  start_time = time.time()
-  if database.checkUser(ctx.author.id) == True:
-    database.set_isPlaying(ctx.author.id,False)
-  
-  embed = discord.Embed(title = "📝 Menu", description='Choose an option below!',color=0x5865F2)
-  embed.set_footer(text = f'Runtime: {(time.time()-start_time):.2e} seconds')
-  
-  button1 = discord_components.Button(label='Play', style = '1', emoji='▶️', custom_id='play')
-  button2 = discord_components.Button(label='Stats',style = '1', emoji = '📈', custom_id='stats')
-  button3 = discord_components.Button(label='Leaderboard', style = '1', emoji='🏆', custom_id='leaderboard')
-  button4 = discord_components.Button(label='Help', style = '1', emoji='❓', custom_id='help')
-  
-  menu = [button1,button2,button3,button4]
-
-  # shows menu to user
-  message = await ctx.reply(embed=embed, components=[menu])
-
-  # ensure that user who pressed the button is the user who called the original command
-  interaction = await bot.wait_for('button_click')
-
-  while interaction.author != ctx.author:
-    interaction = await bot.wait_for('button_click')
-
-  # disable buttons and update menu look after a button is pressed
-  for button in menu:
-    if button.custom_id == interaction.custom_id:
-      button.style = 3
-    button.disabled = True
     
-  await message.edit(embed=embed, components=[menu])
-
-  if interaction.custom_id == 'play':
-    # when 'Play button is pressed'
-    await ctx.reply(embed=play_wordle(ctx.author))
-
-  elif interaction.custom_id == 'stats':
-    # when 'Stats' button is pressed
-    if str(ctx.author.id) not in database.get_users():
-      await interaction.send(f'<@{ctx.author.id}> Play a game first to view your stats!', ephemeral = False)
-    else:
-      await ctx.reply(embed=get_stats(ctx.author))
-  
-  elif interaction.custom_id == 'leaderboard':
-    # when 'Leaderboard' button is pressed
-    server = message.guild
-    await ctx.reply(embed=get_server_leaderboard(ctx.author,server))
-  
-  else:
-    # when 'Help' button is pressed
-    await ctx.reply(embed=help())
-
 def play_wordle(user):
   # function to start a wordle game
   user_id = user.id
@@ -242,7 +243,14 @@ def get_server_leaderboard(user,server):
   
 def help():
   start_time = time.time()
-  embed = discord.Embed(title = "Help ❓", description='Placeholder Text',color=0x5865F2)
+  description_text = ''
+  
+  f = open('menu.txt','r')
+
+  for line in f:
+    description_text += line
+    
+  embed = discord.Embed(title = "Help ❓", description=description_text ,color=0x5865F2)
   embed.set_footer(text = f'Runtime: {(time.time()-start_time):.2e} seconds')
   return embed
   
