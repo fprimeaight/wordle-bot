@@ -73,99 +73,110 @@ async def testcmd(ctx):
 
 @bot.event
 async def on_message(message):
-  # handles main wordle game logic
-  header_text = 'Playing Wordle...'
-  secondary_text = ''
-  embed_colour = 0x5865F2
-
-  # ensure user is a valid one and is indeed playing the game
-  if message.author.id != bot.user.id and database.checkUser(message.author.id) == True:
-    if len(message.content.split()) == 1 and database.get_isPlaying(str(message.author.id)) == True and message.content != '!testcmd':
-      user_id = message.author.id
-      user_word = message.content.upper()
-      user_game = game.Wordle(database.get_answer(user_id))
-      attempts = database.get_attempts(user_id)
-      exp_gain = 0
-
-      if len(user_word) == 5 and user_game.checkWordExists(user_word) == True:
-        database.set_keyboard(user_id,game.Keyboard.newKeyboardState(database.get_keyboard(user_id),user_game.checkWord(user_word)))
-        database.set_output(user_id,user_game.emojiDisplay(user_game.checkWord(user_word)) + '\n')
-        output = database.get_output(user_id)
-
-        # give extra exp for using challenge word
-        if user_word == database.get_challenge_word(user_id):
-          database.gain_exp(user_id,100)
-          database.reset_challenge_word(user_id)
-          await message.channel.send(f'You gained 100 EXP for using the word {user_word}!')
-
-        #incrementing attempt counter by 1
-        database.set_attempts(user_id,database.get_attempts(user_id) + 1)
-        database.set_totalGuesses(user_id,database.get_totalGuesses(user_id) + 1)
-
-        secondary_text = f'Enter a 5 letter word!\nYou have {5-attempts} attempts left!\nUse the word {database.get_challenge_word(user_id)} for bonus EXP!\n\n{output}'
+  try:
+    # handles main wordle game logic
+    header_text = 'Playing Wordle...'
+    secondary_text = ''
+    embed_colour = 0x5865F2
+  
+    # ensure user is a valid one and is indeed playing the game
+    if message.author.id != bot.user.id and database.checkUser(message.author.id) == True:
+      if len(message.content.split()) == 1 and database.get_isPlaying(str(message.author.id)) == True and message.content != '!testcmd':
+        # create loading screen embed
+        embed = discord.Embed(title=header_text, description = 'Loading...', color=embed_colour)
+        sent_embed = await message.reply(embed=embed)
         
-        if user_word == database.get_answer(user_id):
-          header_text = 'You WON! 🏆'
-          embed_colour = 0x7BBA43
+        user_id = message.author.id
+        user_word = message.content.upper()
+        user_game = game.Wordle(database.get_answer(user_id))
+        attempts = database.get_attempts(user_id)
+        exp_gain = 0
+  
+        if len(user_word) == 5 and user_game.checkWordExists(user_word) == True:
+          database.set_keyboard(user_id,game.Keyboard.newKeyboardState(database.get_keyboard(user_id),user_game.checkWord(user_word)))
+          database.set_output(user_id,user_game.emojiDisplay(user_game.checkWord(user_word)) + '\n')
+          output = database.get_output(user_id)
+  
+          # give extra exp for using challenge word
+          if user_word == database.get_challenge_word(user_id):
+            database.gain_exp(user_id,100)
+            database.reset_challenge_word(user_id)
+            await message.channel.send(f'You gained 100 EXP for using the word {user_word}!')
+  
+          #incrementing attempt counter by 1
+          database.set_attempts(user_id,database.get_attempts(user_id) + 1)
+          database.set_totalGuesses(user_id,database.get_totalGuesses(user_id) + 1)
+  
+          secondary_text = f'Enter a 5 letter word!\nYou have {5-attempts} attempts left!\nUse the word {database.get_challenge_word(user_id)} for bonus EXP!\n\n{output}'
           
-          if database.get_attempts(user_id) == 0:
-            exp_gain = int(15000 * (-1/(database.get_streak(user_id)+2)+1.5))
-            await message.reply(f'💸 JACKPOT!!! 💸')
-          else:
-            exp_gain = int(4000/(2**(database.get_attempts(user_id)-1)) * (-1/(database.get_streak(user_id)+2)+1.5))
-
-          database.gain_exp(user_id,exp_gain)
-          database.set_streak(user_id,database.get_streak(user_id) + 1)
-          
-          secondary_text = f'You WON in {database.get_attempts(user_id)} attempts!\nYou won {exp_gain} EXP!\nYour win streak is now {database.get_streak(user_id)}!\n\n{output}'
-
-          embed = discord.Embed(title = header_text, description = secondary_text, color=embed_colour)
-          embed.add_field(name = "Keyboard", value = f'Letters Used:\n{game.Keyboard.newKeyboardDisplay(database.get_keyboard(user_id))}', inline = False)
-          await message.reply(embed=embed)
-          
-          database.set_totalGames(user_id,database.get_totalGames(user_id) + 1)
-          database.set_wins(user_id,database.get_wins(user_id) + 1)
-          database.reset_keyboard(user_id)
-          database.reset_answer(user_id)
-          database.set_attempts(user_id,0)
-          database.reset_output(user_id)
-          database.set_isPlaying(user_id,False)
-
-        elif attempts >= 5:
-          header_text = 'You LOST! 💀'
-          embed_colour = 0xFF0000
-          secondary_text = f'Word is {database.get_answer(user_id)}!\nYou lost 600 EXP!\nYour win streak is now 0!\n\n{output}'
-
-          embed = discord.Embed(title = header_text, description = secondary_text, color=embed_colour)
-          embed.add_field(name = "Keyboard", value = f'Letters Used:\n{game.Keyboard.newKeyboardDisplay(database.get_keyboard(user_id))}', inline = False)
-          await message.reply(embed=embed)
-          
-          if database.get_exp(user_id) < 600:
-            database.gain_exp(user_id,-database.get_exp(user_id))
-          else:
-            database.gain_exp(user_id,-600)
+          if user_word == database.get_answer(user_id):
+            header_text = 'You WON! 🏆'
+            embed_colour = 0x7BBA43
             
-          database.set_streak(user_id,0)
-          
-          database.set_totalGames(user_id,database.get_totalGames(user_id) + 1)
-          database.reset_keyboard(user_id)
-          database.reset_answer(user_id)
-          database.set_attempts(user_id,0)
-          database.reset_output(user_id)
-          database.set_isPlaying(user_id,False)
-
-        else:
-          embed = discord.Embed(title = header_text, description = secondary_text, color=embed_colour)
-          embed.add_field(name = "Keyboard", value = f'Letters Used:\n{game.Keyboard.newKeyboardDisplay(database.get_keyboard(user_id))}', inline = False)
-          await message.reply(embed=embed)
+            if database.get_attempts(user_id) == 0:
+              exp_gain = int(15000 * (-1/(database.get_streak(user_id)+2)+1.5))
+              await message.reply(f'💸 JACKPOT!!! 💸')
+            else:
+              exp_gain = int(4000/(2**(database.get_attempts(user_id)-1)) * (-1/(database.get_streak(user_id)+2)+1.5))
+  
+            database.gain_exp(user_id,exp_gain)
+            database.set_streak(user_id,database.get_streak(user_id) + 1)
+            
+            secondary_text = f'You WON in {database.get_attempts(user_id)} attempts!\nYou won {exp_gain} EXP!\nYour win streak is now {database.get_streak(user_id)}!\n\n{output}'
+  
+            embed = discord.Embed(title = header_text, description = secondary_text, color=embed_colour)
+            embed.add_field(name = "Keyboard", value = f'Letters Used:\n{game.Keyboard.newKeyboardDisplay(database.get_keyboard(user_id))}', inline = False)
+            await sent_embed.edit(embed=embed)
+            
+            database.set_totalGames(user_id,database.get_totalGames(user_id) + 1)
+            database.set_wins(user_id,database.get_wins(user_id) + 1)
+            database.reset_keyboard(user_id)
+            database.reset_answer(user_id)
+            database.set_attempts(user_id,0)
+            database.reset_output(user_id)
+            database.set_isPlaying(user_id,False)
+  
+          elif attempts >= 5:
+            header_text = 'You LOST! 💀'
+            embed_colour = 0xDA5252
+            secondary_text = f'Word is {database.get_answer(user_id)}!\nYou lost 600 EXP!\nYour win streak is now 0!\n\n{output}'
+  
+            embed = discord.Embed(title = header_text, description = secondary_text, color=embed_colour)
+            embed.add_field(name = "Keyboard", value = f'Letters Used:\n{game.Keyboard.newKeyboardDisplay(database.get_keyboard(user_id))}', inline = False)
+            await sent_embed.edit(embed=embed)
+            
+            if database.get_exp(user_id) < 600:
+              database.gain_exp(user_id,-database.get_exp(user_id))
+            else:
+              database.gain_exp(user_id,-600)
+              
+            database.set_streak(user_id,0)
+            
+            database.set_totalGames(user_id,database.get_totalGames(user_id) + 1)
+            database.reset_keyboard(user_id)
+            database.reset_answer(user_id)
+            database.set_attempts(user_id,0)
+            database.reset_output(user_id)
+            database.set_isPlaying(user_id,False)
+  
+          else:
+            embed = discord.Embed(title = header_text, description = secondary_text, color=embed_colour)
+            embed.add_field(name = "Keyboard", value = f'Letters Used:\n{game.Keyboard.newKeyboardDisplay(database.get_keyboard(user_id))}', inline = False)
+            await sent_embed.edit(embed=embed)
       
       elif len(user_word) != 5:
         await message.reply('Word MUST have 5 letters!')
       else:
         await message.reply('Word you entered is not a valid word!')
-
-    await bot.process_commands(message)
+        database.set_isPlaying(user_id,False)
     
+  except:
+    # Handles errors
+    # Disables the user's game if there is an error
+    database.set_isPlaying(str(message.author.id), False)
+  
+  await bot.process_commands(message)
+
 def play_wordle(user):
   # function to start a wordle game
   user_id = user.id
