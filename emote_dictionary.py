@@ -102,5 +102,6 @@ emojiDict = {
              'BW':'<:wordle_grey_w:981830953892728832>',
              'BX':'<:wordle_grey_x:981830993637953626>',
              'BY':'<:wordle_grey_y:981831019684581386>',
-             'BZ':'<:wordle_grey_z:981831048369422386>'
+             'BZ':'<:wordle_grey_z:981831048369422386>',
+             'Blank':'<:wordle_empty_square:993521695182819408>'
             }

@@ -4,8 +4,9 @@ import os
 import discord_components
 import database
 from discord.ext import commands
-# from server import keep_alive
+from server import keep_alive
 import time
+from emote_dictionary import emojiDict
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -82,6 +83,7 @@ async def on_message(message):
     # ensure user is a valid one and is indeed playing the game
     if message.author.id != bot.user.id and database.checkUser(message.author.id) == True:
       if len(message.content.split()) == 1 and database.get_isPlaying(str(message.author.id)) == True and message.content != '!testcmd':
+        
         # create loading screen embed
         embed = discord.Embed(title=header_text, description = 'Loading...', color=embed_colour)
         sent_embed = await message.reply(embed=embed)
@@ -103,11 +105,17 @@ async def on_message(message):
             database.reset_challenge_word(user_id)
             await message.channel.send(f'You gained 100 EXP for using the word {user_word}!')
   
-          #incrementing attempt counter by 1
+          # incrementing attempt counter by 1
           database.set_attempts(user_id,database.get_attempts(user_id) + 1)
           database.set_totalGuesses(user_id,database.get_totalGuesses(user_id) + 1)
-  
-          secondary_text = f'Enter a 5 letter word!\nYou have {5-attempts} attempts left!\nUse the word {database.get_challenge_word(user_id)} for bonus EXP!\n\n{output}'
+
+          # displays the empty rows/squares left
+          blank_rows = ''
+          for i in range(5-attempts):
+            blank_rows += emojiDict['Blank'] * 5 + '\n'
+
+          # update embed description text
+          secondary_text = f'Enter a 5 letter word!\nYou have {5-attempts} attempts left!\nUse the word {database.get_challenge_word(user_id)} for bonus EXP!\n\n{output + blank_rows}'
           
           if user_word == database.get_answer(user_id):
             header_text = 'You WON! 🏆'
@@ -122,7 +130,7 @@ async def on_message(message):
             database.gain_exp(user_id,exp_gain)
             database.set_streak(user_id,database.get_streak(user_id) + 1)
             
-            secondary_text = f'You WON in {database.get_attempts(user_id)} attempts!\nYou won {exp_gain} EXP!\nYour win streak is now {database.get_streak(user_id)}!\n\n{output}'
+            secondary_text = f'You WON in {database.get_attempts(user_id)} attempts!\nYou won {exp_gain} EXP!\nYour win streak is now {database.get_streak(user_id)}!\n\n{output + blank_rows}'
   
             embed = discord.Embed(title = header_text, description = secondary_text, color=embed_colour)
             embed.add_field(name = "Keyboard", value = f'Letters Used:\n{game.Keyboard.newKeyboardDisplay(database.get_keyboard(user_id))}', inline = False)
@@ -139,7 +147,7 @@ async def on_message(message):
           elif attempts >= 5:
             header_text = 'You LOST! 💀'
             embed_colour = 0xDA5252
-            secondary_text = f'Word is {database.get_answer(user_id)}!\nYou lost 600 EXP!\nYour win streak is now 0!\n\n{output}'
+            secondary_text = f'Word is {database.get_answer(user_id)}!\nYou lost 600 EXP!\nYour win streak is now 0!\n\n{output + blank_rows}'
   
             embed = discord.Embed(title = header_text, description = secondary_text, color=embed_colour)
             embed.add_field(name = "Keyboard", value = f'Letters Used:\n{game.Keyboard.newKeyboardDisplay(database.get_keyboard(user_id))}', inline = False)
@@ -164,11 +172,11 @@ async def on_message(message):
             embed.add_field(name = "Keyboard", value = f'Letters Used:\n{game.Keyboard.newKeyboardDisplay(database.get_keyboard(user_id))}', inline = False)
             await sent_embed.edit(embed=embed)
       
-      elif len(user_word) != 5:
-        await message.reply('Word MUST have 5 letters!')
-      else:
-        await message.reply('Word you entered is not a valid word!')
-        database.set_isPlaying(user_id,False)
+        elif len(user_word) != 5:
+          await message.reply('Word MUST have 5 letters!')
+        
+        else:
+          await message.reply('Word you entered is not a valid word!')
     
   except:
     # Handles errors
@@ -186,7 +194,12 @@ def play_wordle(user):
 
   database.set_isPlaying(user_id,True)
 
-  embed = discord.Embed(title = "Playing Wordle...", description = f'Enter a 5 letter word! You have {6-database.get_attempts(user_id)} attempts left!\nUse the word {database.get_challenge_word(user_id)} for bonus EXP!\n\n{database.get_output(user_id)}', color=0x5865F2)
+  # displays the empty rows/squares left
+  blank_rows = ''
+  for i in range(6-database.get_attempts(user_id)):
+    blank_rows += emojiDict['Blank'] * 5 + '\n'
+  
+  embed = discord.Embed(title = "Playing Wordle...", description = f'Enter a 5 letter word! You have {6-database.get_attempts(user_id)} attempts left!\nUse the word {database.get_challenge_word(user_id)} for bonus EXP!\n\n{database.get_output(user_id) + blank_rows}', color=0x5865F2)
   embed.add_field(name = "Keyboard", value = f'Letters Used:\n{game.Keyboard.newKeyboardDisplay(database.get_keyboard(user_id))}', inline = False)
 
   return embed
@@ -265,5 +278,5 @@ def help():
   embed.set_footer(text = f'Runtime: {(time.time()-start_time):.2e} seconds')
   return embed
   
-# keep_alive()
+keep_alive()
 bot.run(os.environ['TOKEN'])
