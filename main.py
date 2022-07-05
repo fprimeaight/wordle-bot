@@ -54,23 +54,27 @@ async def testcmd(ctx):
 
   if interaction.custom_id == 'play':
     # when 'Play button is pressed'
-    await ctx.reply(embed=play_wordle(ctx.author))
+    await interaction.defer(ephemeral = False)
+    await interaction.send(embed=play_wordle(ctx.author), ephemeral = False)
 
   elif interaction.custom_id == 'stats':
     # when 'Stats' button is pressed
+    await interaction.defer(ephemeral = False)
     if str(ctx.author.id) not in database.get_users():
       await interaction.send(f'<@{ctx.author.id}> Play a game first to view your stats!', ephemeral = False)
     else:
-      await ctx.reply(embed=get_stats(ctx.author))
+      await interaction.send(embed=get_stats(ctx.author), ephemeral = False)
   
   elif interaction.custom_id == 'leaderboard':
     # when 'Leaderboard' button is pressed
     server = message.guild
-    await ctx.reply(embed=get_server_leaderboard(ctx.author,server))
+    await interaction.defer(ephemeral = False)
+    await interaction.send(embed=get_server_leaderboard(ctx.author,server), ephemeral = False)
   
   else:
     # when 'Help' button is pressed
-    await ctx.reply(embed=help())
+    await interaction.defer(ephemeral = False)
+    await interaction.send(embed=help(), ephemeral = False)
 
 @bot.event
 async def on_message(message):
