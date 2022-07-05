@@ -123,7 +123,7 @@ async def on_message(message):
             
             if database.get_attempts(user_id) == 0:
               exp_gain = int(15000 * (-1/(database.get_streak(user_id)+2)+1.5))
-              await message.reply(f'💸 JACKPOT!!! 💸')
+              header_text = '💸 JACKPOT!!! 💸'
             else:
               exp_gain = int(4000/(2**(database.get_attempts(user_id)-1)) * (-1/(database.get_streak(user_id)+2)+1.5))
   
@@ -173,10 +173,12 @@ async def on_message(message):
             await sent_embed.edit(embed=embed)
       
         elif len(user_word) != 5:
-          await message.reply('Word MUST have 5 letters!')
+          embed = discord.Embed(title=header_text, description = 'Word MUST have 5 letters!', color=0xDA5252)
+          await sent_embed.edit(embed=embed)
         
         else:
-          await message.reply('Word you entered is not a valid word!')
+          embed = discord.Embed(title=header_text, description = 'Word you entered is NOT a valid word!', color=0xDA5252)
+          await sent_embed.edit(embed=embed)
     
   except:
     # Handles errors
