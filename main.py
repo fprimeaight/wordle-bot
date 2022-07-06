@@ -55,7 +55,9 @@ async def testcmd(ctx):
   if interaction.custom_id == 'play':
     # when 'Play button is pressed'
     await interaction.defer(ephemeral = False)
-    await interaction.send(embed=play_wordle(ctx.author), ephemeral = False)
+    new_embed = play_wordle(ctx.author)
+    
+    await interaction.send(embed=new_embed, ephemeral = False)
 
   elif interaction.custom_id == 'stats':
     # when 'Stats' button is pressed
@@ -83,7 +85,8 @@ async def on_message(message):
     header_text = 'Playing Wordle...'
     secondary_text = ''
     embed_colour = 0x5865F2
-  
+    resign_button = discord_components.Button(label='Resign', style = '4', emoji='🏳️', custom_id='resign')
+
     # ensure user is a valid one and is indeed playing the game
     if message.author.id != bot.user.id and database.checkUser(message.author.id) == True:
       if len(message.content.split()) == 1 and database.get_isPlaying(str(message.author.id)) == True and message.content != '!testcmd':
@@ -138,7 +141,8 @@ async def on_message(message):
   
             embed = discord.Embed(title = header_text, description = secondary_text, color=embed_colour)
             embed.add_field(name = "Keyboard", value = f'Letters Used:\n{game.Keyboard.newKeyboardDisplay(database.get_keyboard(user_id))}', inline = False)
-            await sent_embed.edit(embed=embed)
+            
+            await sent_embed.edit(embed=embed, components = [replay_button])
             
             database.set_totalGames(user_id,database.get_totalGames(user_id) + 1)
             database.set_wins(user_id,database.get_wins(user_id) + 1)
@@ -155,7 +159,7 @@ async def on_message(message):
   
             embed = discord.Embed(title = header_text, description = secondary_text, color=embed_colour)
             embed.add_field(name = "Keyboard", value = f'Letters Used:\n{game.Keyboard.newKeyboardDisplay(database.get_keyboard(user_id))}', inline = False)
-            await sent_embed.edit(embed=embed)
+            await sent_embed.edit(embed=embed, components = [replay_button])
             
             if database.get_exp(user_id) < 600:
               database.gain_exp(user_id,-database.get_exp(user_id))
@@ -174,7 +178,7 @@ async def on_message(message):
           else:
             embed = discord.Embed(title = header_text, description = secondary_text, color=embed_colour)
             embed.add_field(name = "Keyboard", value = f'Letters Used:\n{game.Keyboard.newKeyboardDisplay(database.get_keyboard(user_id))}', inline = False)
-            await sent_embed.edit(embed=embed)
+            await sent_embed.edit(embed=embed,components = [resign_button])
       
         elif len(user_word) != 5:
           embed = discord.Embed(title=header_text, description = 'Word MUST have 5 letters!', color=0xDA5252)
@@ -183,6 +187,41 @@ async def on_message(message):
         else:
           embed = discord.Embed(title=header_text, description = 'Word you entered is NOT a valid word!', color=0xDA5252)
           await sent_embed.edit(embed=embed)
+
+        # code that handles the button presses in the Wordle game
+        # ensure that user who pressed the button is the user who called the original command
+        interaction = await bot.wait_for('button_click')
+
+        while interaction.author != message.author:
+          interaction = await bot.wait_for('button_click')
+        
+        if interaction.custom_id == 'resign':
+          # run same code as that of losing
+          resign_button.disabled = True
+          await sent_embed.edit(embed=embed, components=[resign_button])
+
+          await interaction.defer(ephemeral = False)
+          header_text = 'You LOST! 💀'
+          embed_colour = 0xDA5252
+          secondary_text = f'Word is {database.get_answer(user_id)}!\nYou lost 600 EXP!\nYour win streak is now 0!\n\n{output + blank_rows}'
+
+          embed = discord.Embed(title = header_text, description = secondary_text, color=embed_colour)
+          embed.add_field(name = "Keyboard", value = f'Letters Used:\n{game.Keyboard.newKeyboardDisplay(database.get_keyboard(user_id))}', inline = False)
+          await interaction.send(embed=embed)
+          
+          if database.get_exp(user_id) < 600:
+            database.gain_exp(user_id,-database.get_exp(user_id))
+          else:
+            database.gain_exp(user_id,-600)
+            
+          database.set_streak(user_id,0)
+          
+          database.set_totalGames(user_id,database.get_totalGames(user_id) + 1)
+          database.reset_keyboard(user_id)
+          database.reset_answer(user_id)
+          database.set_attempts(user_id,0)
+          database.reset_output(user_id)
+          database.set_isPlaying(user_id,False)
     
   except:
     # Handles errors
